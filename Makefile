@@ -2,17 +2,27 @@
 SHELL := /bin/bash
 PROJECTNAME := "gomacbot"
 
+help:
+	@echo "📦 Available make commands:"
+	@echo
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		sort | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
+	@echo
+	@echo "Usage: make <target> [VARIABLE=value]"
+	@echo "Example: make module name=users"
+
 
 # Build the application
-all: build test
+all: build test ## Build and test the application
 
-build:
+build: ## Build the Go binary
 	@echo "Building..."
 	
 	
 	@go build -o main cmd/api/main.go
 
-install-dependencies:
+install-dependencies: ## Install all required dependencies for the project
 # 	sudo apt install ca-certificates
 #gomigrate
 	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
@@ -25,20 +35,12 @@ install-dependencies:
 	go get firebase.google.com/go/v4
 	go get google.golang.org/api/option
 
-install-dependencies-wins:
-	sudo apt install ca-certificates
-
-
-install-dependencies-linux:
-	sudo apt update
-	sudo apt install -y ca-certificates
-	sudo update-ca-certificates
 
 # Run the application
-run:
+run: ## Run the Go application
 	@go run cmd/api/main.go
-# Create DB container
-docker-run:
+
+docker-run: ## Build and start Docker containers
 	@if docker compose up --build 2>/dev/null; then \
 		: ; \
 	else \
@@ -47,7 +49,7 @@ docker-run:
 	fi
 
 # Shutdown DB container
-docker-down:
+docker-down: ## Stop Docker containers
 	@if docker compose down 2>/dev/null; then \
 		: ; \
 	else \
@@ -56,7 +58,7 @@ docker-down:
 	fi
 
 # Test the application
-test:
+test: ## Run all tests
 	@echo "Testing..."
 	@go test ./... -v
 # Integrations Tests for the application
@@ -86,59 +88,8 @@ watch:
             fi; \
         fi
 
-# Usage: make module name=users
-# module:
-# 	@if [ -z "$(name)" ]; then \
-# 		echo "Please provide a module name. Example: make module name=users"; \
-# 		exit 1; \
-# 	fi; \
-# 	echo "📦 Creating module: $(name)"; \
-# 	BASE_DIR=internal/$(name); \
-# 	VERSION=$$(printf "%06d" $$(ls -1 $$BASE_DIR/migration 2>/dev/null | wc -l)); \
-#     MIGRATION_NAME="$${VERSION}_init_schema"; \
-# 	mkdir -p $$BASE_DIR/{migration,query,models}; \
-# 	for f in router.go repository.go service.go handler.go; do \
-# 		echo "package $(name)" > $$BASE_DIR/$$f; \
-# 	done; \
-# 	migrate create -ext sql -dir $$BASE_DIR/migration $$MIGRATION_NAME; \
-# 	echo "✅ Module structure created for $(name)"; \
-# 	\
-# 	# ✅ Ensure sqlc.yaml exists and initialized \
-# 	if [ ! -f ./sqlc.yaml ] || [ ! -s ./sqlc.yaml ]; then \
-# 		printf "version: \"2\"\ncloud:\n  project: \"$(PROJECTNAME)\"\nsql:\n" > ./sqlc.yaml; \
-# 		echo "✅ Created base sqlc.yaml"; \
-# 	fi; \
-# 	\
-# 	# ✅ Append module block only if not already present \
-# 	# Append module only if not already present
-# 	if ! grep -q "schema: ./internal/$(name)/migration" ./sqlc.yaml; then
-# 		cat >> ./sqlc.yaml <<EOL
-# 	- engine: "postgresql"
-# 		schema: "./internal/$(name)/migration"
-# 		queries: "./internal/$(name)/query"
 
-# 		gen:
-# 		go:
-# 			package: "$(name)"
-# 			out: "./internal/$(name)/models"
-# 			sql_package: "pgx/v5"
-# 			emit_json_tags: true
-# 			emit_prepared_queries: false
-# 			emit_interface: true
-# 			emit_exact_table_names: false
-# 			emit_empty_slices: true
-# 			overrides:
-# 			- db_type: timestamptz
-# 				go_type: time.Time
-
-# 	EOL
-# 		echo "✅ Added SQLC config for module $(name)"
-# 	else
-# 		echo "⚠️ SQLC config for module $(name) already exists — skipping"
-# 	fi
-
-
-module:
+module: ## Create a new module. Usage: make module name=<module_name>
 	@if [ -z "$(name)" ]; then \
 		echo "Please provide a module name. Example: make module name=users"; \
 		exit 1; \
@@ -146,14 +97,11 @@ module:
 	@bash scripts/create_sqlc_module.sh "$(name)" "$(PROJECTNAME)"
 
 
-
-
-
 # to tidy the code base by installing dependencies
 tidy:
 	go mod tidy
 
-migration:
+migration: ## Create a new migration. Usage: make migration module=<module> name=<migration_name>
 	@if [ -z "$(module)" ]; then \
 		echo "❌ Please provide a module. Example: make migration module=users name=add_profile_table"; \
 		exit 1; \
