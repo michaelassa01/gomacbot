@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: klusta-api-deployment
+  labels:
+    app: klusta-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: klusta-api
+  template:
+    metadata:
+      labels:
+        app: klusta-api
+    spec:
+      containers:
+        - name: klusta-api
+          image: 238611949570.dkr.ecr.eu-north-1.amazonaws.com/klusta-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: http-server
+          envFrom:
+            - secretRef:
+                name: klusta-env
