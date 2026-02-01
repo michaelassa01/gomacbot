@@ -11,3 +11,11 @@ func ConvertToPgUUID(id uuid.UUID) pgtype.UUID {
     pgUUID.Valid = true
     return pgUUID
 }
+
+func ConvertToPgUUIDFromString(id string) (pgtype.UUID, error) {
+    parsedUUID, err := uuid.Parse(id)
+    if err != nil {
+        return pgtype.UUID{}, err
+    }
+    return ConvertToPgUUID(parsedUUID), nil
+}   

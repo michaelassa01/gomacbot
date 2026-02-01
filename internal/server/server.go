@@ -3,13 +3,11 @@ package server
 import (
 	"fmt"
 
-	db "github.com/michaelassa01/gomacbot/internal/database"
-	// h "github.com/michaelassa01/gomacbot/internal/server/api"
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	// wsh "github.com/michaelassa01/gomacbot/server/ws"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
-	"github.com/go-playground/validator/v10"
 	"github.com/michaelassa01/gomacbot/pkg/token"
 	"github.com/michaelassa01/gomacbot/utils"
 )
@@ -17,42 +15,31 @@ import (
 // Server serves HTTP request for klusta service
 type Server struct {
 	config     utils.Config
-	store      db.Store
+	db         *pgxpool.Pool
 	tokenMaker token.Maker
 	router     *gin.Engine
-	// handler    *h.Handler
-	// wsHandler  *wsh.WSHandler
+	Services   *Services
 }
 
 // NewServer creates a new HTTP server and setup routing
-func NewServer(config utils.Config, store db.Store) (*Server, error) {
-
-	// TokenMaker is set to use pasetoMaker and can be changed to JWTMaker
+func NewServer(config utils.Config, dbConn *pgxpool.Pool) (*Server, error) {
 	tokenMaker, err := token.NewPasetoMaker(config.TokenSymmetricKey)
-
 	if err != nil {
 		return nil, fmt.Errorf("cannot create token maker: %w", err)
 	}
 
-	// wsHandler := wsh.NewHandler(store, config)
+	services := NewServices(dbConn)
 
-	server := &Server{
+	s := &Server{
 		config:     config,
-		store:      store,
+		db:         dbConn,
 		tokenMaker: tokenMaker,
-		// handler:    h.NewHandler(store, config),
-		// wsHandler:  wsHandler,
+		Services:   services,
 	}
 
-	// router func imported
-	server.setupRouter(config)
+	s.setupRouter(config)
 
-	// to register validator with gin
-	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
-		v.RegisterValidation("currency", validCurrency)
-	}
-
-	return server, nil
+	return s, nil
 }
 
 // Start runs the HTTP server on a specification address

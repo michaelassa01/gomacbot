@@ -20,7 +20,6 @@ import (
 	"log"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	db "github.com/michaelassa01/gomacbot/internal/database"
 	// _ "github.com/michaelassa01/gomacbot/docs"
 	"github.com/michaelassa01/gomacbot/internal/server"
 	"github.com/michaelassa01/gomacbot/utils"
@@ -42,8 +41,7 @@ func main() {
 		log.Fatal("cannot connect db:", err)
 	}
 
-	store := db.NewStore(conn)
-	serverConfig, err := server.NewServer(config, store)
+	serverConfig, err := server.NewServer(config, conn)
 	if err != nil {
 		log.Fatal("cannot create server:", err)
 	}

@@ -1,6 +1,6 @@
 # Simple Makefile for a Go project
 SHELL := /bin/bash
-PROJECTNAME := "klusta" #Project name
+PROJECTNAME := "gomacbot"
 
 
 # Build the application
@@ -87,76 +87,102 @@ watch:
         fi
 
 # Usage: make module name=users
+# module:
+# 	@if [ -z "$(name)" ]; then \
+# 		echo "Please provide a module name. Example: make module name=users"; \
+# 		exit 1; \
+# 	fi; \
+# 	echo "📦 Creating module: $(name)"; \
+# 	BASE_DIR=internal/$(name); \
+# 	VERSION=$$(printf "%06d" $$(ls -1 $$BASE_DIR/migration 2>/dev/null | wc -l)); \
+#     MIGRATION_NAME="$${VERSION}_init_schema"; \
+# 	mkdir -p $$BASE_DIR/{migration,query,models}; \
+# 	for f in router.go repository.go service.go handler.go; do \
+# 		echo "package $(name)" > $$BASE_DIR/$$f; \
+# 	done; \
+# 	migrate create -ext sql -dir $$BASE_DIR/migration $$MIGRATION_NAME; \
+# 	echo "✅ Module structure created for $(name)"; \
+# 	\
+# 	# ✅ Ensure sqlc.yaml exists and initialized \
+# 	if [ ! -f ./sqlc.yaml ] || [ ! -s ./sqlc.yaml ]; then \
+# 		printf "version: \"2\"\ncloud:\n  project: \"$(PROJECTNAME)\"\nsql:\n" > ./sqlc.yaml; \
+# 		echo "✅ Created base sqlc.yaml"; \
+# 	fi; \
+# 	\
+# 	# ✅ Append module block only if not already present \
+# 	# Append module only if not already present
+# 	if ! grep -q "schema: ./internal/$(name)/migration" ./sqlc.yaml; then
+# 		cat >> ./sqlc.yaml <<EOL
+# 	- engine: "postgresql"
+# 		schema: "./internal/$(name)/migration"
+# 		queries: "./internal/$(name)/query"
+
+# 		gen:
+# 		go:
+# 			package: "$(name)"
+# 			out: "./internal/$(name)/models"
+# 			sql_package: "pgx/v5"
+# 			emit_json_tags: true
+# 			emit_prepared_queries: false
+# 			emit_interface: true
+# 			emit_exact_table_names: false
+# 			emit_empty_slices: true
+# 			overrides:
+# 			- db_type: timestamptz
+# 				go_type: time.Time
+
+# 	EOL
+# 		echo "✅ Added SQLC config for module $(name)"
+# 	else
+# 		echo "⚠️ SQLC config for module $(name) already exists — skipping"
+# 	fi
+
+
 module:
 	@if [ -z "$(name)" ]; then \
-		echo "❌ Please provide a module name. Example: make module name=users"; \
+		echo "Please provide a module name. Example: make module name=users"; \
 		exit 1; \
-	fi; \
-	echo "📦 Creating module: $(name)"; \
-	BASE_DIR=internal/$(name); \
-	VERSION=$$(printf "%06d" $$(ls -1 $$BASE_DIR/migration 2>/dev/null | wc -l)); \
-    MIGRATION_NAME="$${VERSION}_init_schema"; \
-	mkdir -p $$BASE_DIR/{migration,query,models}; \
-	for f in router.go repository.go service.go handler.go; do \
-		echo "package $(name)" > $$BASE_DIR/$$f; \
-	done; \
-	migrate create -ext sql -dir $$BASE_DIR/migration $$MIGRATION_NAME; \
-	echo "✅ Module structure created for $(name)"; \
-	\
-	# ✅ Ensure sqlc.yaml exists and initialized \
-	if [ ! -f sqlc.yaml ] || [ ! -s sqlc.yaml ]; then \
-		printf "version: \"2\"\ncloud:\n  project: \"$(PROJECTNAME)\"\nsql:\n" > sqlc.yaml; \
-		echo "✅ Created base sqlc.yaml"; \
-	fi; \
-	\
-	# ✅ Append module block only if not already present \
-	if ! grep -q "./internal/$(name)/migration" sqlc.yaml; then \
-		printf "  - engine: \"postgresql\"\n" >> sqlc.yaml; \
-		printf "    schema: \"./internal/$(name)/migration\"\n" >> sqlc.yaml; \
-		printf "    queries: \"./internal/$(name)/query\"\n\n" >> sqlc.yaml; \
-		printf "    gen:\n" >> sqlc.yaml; \
-		printf "      go:\n" >> sqlc.yaml; \
-		printf "        package: \"$(name)\"\n" >> sqlc.yaml; \
-		printf "        out: \"./internal/$(name)/models\"\n" >> sqlc.yaml; \
-		printf "        sql_package: \"pgx/v5\"\n" >> sqlc.yaml; \
-		printf "        emit_json_tags: true\n" >> sqlc.yaml; \
-		printf "        emit_prepared_queries: false\n" >> sqlc.yaml; \
-		printf "        emit_interface: true\n" >> sqlc.yaml; \
-		printf "        emit_exact_table_names: false\n" >> sqlc.yaml; \
-		printf "        emit_empty_slices: true\n" >> sqlc.yaml; \
-		printf "        overrides:\n" >> sqlc.yaml; \
-		printf "          - db_type: timestamptz\n" >> sqlc.yaml; \
-		printf "            go_type: time.Time\n\n" >> sqlc.yaml; \
-		echo "✅ Added SQLC config for module $(name)"; \
-	else \
-		echo "⚠️ SQLC config for module $(name) already exists — skipping"; \
 	fi
+	@bash scripts/create_sqlc_module.sh "$(name)" "$(PROJECTNAME)"
+
+
+
+
 
 # to tidy the code base by installing dependencies
 tidy:
 	go mod tidy
 
-migrateup:
-	migrate -path db/migration -database "$(DB_URL)" -verbose up
-
-forcemigrate:
-	migrate -path internal/migration -database "$(DB_URL)" force 3
-
-migrateup1:
-	migrate -path internal/migration -database "$(DB_URL)" -verbose up 1
-
-migratedown:
-	migrate -path internal/migration -database "$(DB_URL)" -verbose down
-
-migratedown1:
-	migrate -path internal/migration -database "$(DB_URL)" -verbose down
-
-createmigration:
+migration:
+	@if [ -z "$(module)" ]; then \
+		echo "❌ Please provide a module. Example: make migration module=users name=add_profile_table"; \
+		exit 1; \
+	fi
 	@if [ -z "$(name)" ]; then \
-    	echo "Please provide a migration name. Example: make createmigration name=add_users_table"; \
-    else \
-    	migrate create -ext sql -dir internal/migration -seq $(name); \
-    	fi
+		echo "❌ Please provide a migration name. Example: make migration module=users name=add_profile_table"; \
+		exit 1; \
+	fi
+	@if [ ! -d "internal/$(module)" ]; then \
+		echo "❌ Module '$(module)' does not exist in internal/"; \
+		exit 1; \
+	fi
+
+	@BASE_DIR=internal/$(module); \
+	MIGRATION_DIR=$$BASE_DIR/migration; \
+	mkdir -p $$MIGRATION_DIR; \
+	TIMESTAMP=$$(date +"%Y%m%d%H%M%S"); \
+	COUNT=$$(ls -1 $$MIGRATION_DIR/*.up.sql 2>/dev/null | wc -l | tr -d ' '); \
+	SEQ=$$(printf "%06d" $$((COUNT + 1))); \
+	FILENAME="$${TIMESTAMP}_$${SEQ}_$(name)"; \
+	echo "🚀 Creating migration $$FILENAME for module '$(module)'"; \
+	touch $$MIGRATION_DIR/$$FILENAME.up.sql; \
+	touch $$MIGRATION_DIR/$$FILENAME.down.sql; \
+	echo "✅ Created:"; \
+	echo "   - $$MIGRATION_DIR/$$FILENAME.up.sql"; \
+	echo "   - $$MIGRATION_DIR/$$FILENAME.down.sql";
+
+sqlc:
+	sqlc generate
 
 db_docs:
 	dbdocs build internal/doc/db.dbml
@@ -170,4 +196,4 @@ swagger-doc:
 mock:
 	mockgen -destination db/mock/store.go  github.com/michaelassa01/gomacbot/db/models Store
 
-.PHONY: all build run test clean watch docker-run docker-down itest install-dependencies test tidy swagger-doc createmigration module
+.PHONY: all build run test clean watch docker-run docker-down itest install-dependencies test tidy swagger-doc createmigration module sqlc migration db_docs db_schema mock

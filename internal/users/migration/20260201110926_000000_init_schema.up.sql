@@ -1,6 +1,6 @@
 -- SQL dump generated using DBML (dbml.dbdiagram.io)
 -- Database: PostgreSQL
--- Generated at: 2026-01-31T20:56:44.670Z
+-- Generated at: 2026-02-01T11:10:27.718Z
 
 CREATE TABLE "users" (
   "id" uuid UNIQUE PRIMARY KEY DEFAULT (gen_random_uuid()),

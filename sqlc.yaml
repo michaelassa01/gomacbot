@@ -1,6 +1,6 @@
 version: "2"
 cloud:
-  project: "klusta"
+  project: "gomacbot"
 sql:
   - engine: "postgresql"
     schema: "./internal/users/migration"
@@ -16,9 +16,61 @@ sql:
         emit_interface: true
         emit_exact_table_names: false
         emit_empty_slices: true
+        emit_pointers_for_null_types: true
         overrides:
           - db_type: timestamptz
             go_type: time.Time
+  - engine: "postgresql"
+    schema: "./internal/verification/migration"
+    queries: "./internal/verification/query"
 
+    gen:
+      go:
+        package: "verification"
+        out: "./internal/verification/models"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_prepared_queries: false
+        emit_interface: true
+        emit_exact_table_names: false
+        emit_empty_slices: true
+        emit_pointers_for_null_types: true
+        overrides:
+          - db_type: timestamptz
+            go_type: time.Time
+  - engine: "postgresql"
+    schema: "./internal/sms/migration"
+    queries: "./internal/sms/query"
 
+    gen:
+      go:
+        package: "sms"
+        out: "./internal/sms/models"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_prepared_queries: false
+        emit_interface: true
+        emit_exact_table_names: false
+        emit_empty_slices: true
+        emit_pointers_for_null_types: true
+        overrides:
+          - db_type: timestamptz
+            go_type: time.Time
+  - engine: "postgresql"
+    schema: "./internal/sms/migration"
+    queries: "./internal/sms/query"
 
+    gen:
+      go:
+        package: "sms"
+        out: "./internal/sms/models"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_prepared_queries: false
+        emit_interface: true
+        emit_exact_table_names: false
+        emit_empty_slices: true
+        emit_pointers_for_null_types: true
+        overrides:
+          - db_type: timestamptz
+            go_type: time.Time

@@ -8,6 +8,9 @@ import (
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+
+	// import modules router
+	users "github.com/michaelassa01/gomacbot/internal/users"
 )
 
 func (s *Server) setupRouter(config u.Config) {
@@ -24,6 +27,9 @@ func (s *Server) setupRouter(config u.Config) {
 			"message": "Hello World",
 		})
 	})
+
+	usersHandler := users.NewHandler(s.Services.User)
+	users.RegisterUsersRoutes(apiKeyOnly, usersHandler)
 
 	s.router = router
 }
