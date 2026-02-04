@@ -18,7 +18,6 @@ func NewHandler(s *Service) *Handler {
 }
 
 
-
 func (h *Handler) CreateUser(ctx *gin.Context) {
 	// Implementation of CreateUser handler goes here
 	var req CreateUserReq
