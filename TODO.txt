@@ -4,4 +4,6 @@ bug3 := sqlc bugs fix
         write remove module make command which will delete the section for the module and if rerun it shouldnt create another sqlc command if exist
 bug4 := custom error number and code 
 bug5 := adding any fields for validation 
+Fixture === 
+	backup storage Postgres to google drive 
 
