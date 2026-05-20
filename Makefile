@@ -1,6 +1,6 @@
 # Simple Makefile for a Go project
 SHELL := /bin/bash
-PROJECTNAME := "gomacbot"
+PROJECTNAME := "cnn-nigeria"
 
 help:
 	@echo "📦 Available make commands:"
@@ -19,11 +19,21 @@ all: build test ## Build and test the application
 build: ## Build the Go binary
 	@echo "Building..."
 	
-	
 	@go build -o main cmd/api/main.go
+
+deps: ## Download and tidy Go dependencies
+	@echo "Downloading Go modules..."
+	go mod tidy
+	@echo "Go modules ready"
 
 install-dependencies: ## Install all required dependencies for the project
 # 	sudo apt install ca-certificates
+	@$(MAKE) deps
+	@echo "  → Installing development tools..."
+	@# Install golangci-lint for linting
+	@which golangci-lint > /dev/null || (echo "Installing golangci-lint..." && go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest)
+	@# Install mockgen for mocking (optional)
+	@which mockgen > /dev/null || (echo "Installing mockgen..." && go install github.com/golang/mock/mockgen@latest)
 #gomigrate
 	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 	go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
@@ -34,6 +44,10 @@ install-dependencies: ## Install all required dependencies for the project
 #firebase oauth
 	go get firebase.google.com/go/v4
 	go get google.golang.org/api/option
+	@# Install mockgen for mocking (optional)
+	@which mockgen > /dev/null || (echo "Installing mockgen..." && go install github.com/golang/mock/mockgen@latest)
+	@echo "✅ All dependencies installed!"
+
 
 
 # Run the application
@@ -61,6 +75,7 @@ docker-down: ## Stop Docker containers
 test: ## Run all tests
 	@echo "Testing..."
 	@go test ./... -v
+
 # Integrations Tests for the application
 itest:
 	@echo "Running integration tests..."
@@ -89,12 +104,19 @@ watch:
         fi
 
 
-module: ## Create a new module. Usage: make module name=<module_name>
+create-module: ## Create a new module. Usage: make create-module name=<module_name>
 	@if [ -z "$(name)" ]; then \
-		echo "Please provide a module name. Example: make module name=users"; \
+		echo "Please provide a module name. Example: make create-module name=users"; \
 		exit 1; \
 	fi
 	@bash scripts/create_sqlc_module.sh "$(name)" "$(PROJECTNAME)"
+
+delete-module: ## Delete a module and its SQLC config. Usage: make delete-module name=<module_name>
+	@if [ -z "$(name)" ]; then \
+		echo "Please provide a module name. Example: make delete-module name=users"; \
+		exit 1; \
+	fi
+	@bash scripts/delete_sqlc_module.sh "$(name)" "$(PROJECTNAME)"
 
 
 # to tidy the code base by installing dependencies
@@ -142,6 +164,6 @@ swagger-doc:
 	swag init -g cmd/main.go
 
 mock:
-	mockgen -destination db/mock/store.go  github.com/michaelassa01/gomacbot/db/models Store
+	mockgen -destination db/mock/store.go  github.com/michaelassa01/cnn-nigeria/db/models Store
 
 .PHONY: all build run test clean watch docker-run docker-down itest install-dependencies test tidy swagger-doc createmigration module sqlc migration db_docs db_schema mock

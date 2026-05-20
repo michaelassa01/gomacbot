@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gomacbot-api-blue
+  namespace: gomacbot
+  labels:
+    app: gomacbot-api
+    deploy-slot: blue
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gomacbot-api
+      deploy-slot: blue
+  template:
+    metadata:
+      labels:
+        app: gomacbot-api
+        deploy-slot: blue
+    spec:
+      containers:
+        - name: api
+          image: registry.digitalocean.com/REPLACE_REGISTRY/gomacbot-api:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: PRODUCTION
+              value: "true"
+          envFrom:
+            - secretRef:
+                name: gomacbot-env
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10

@@ -54,7 +54,7 @@ type Config struct {
 func LoadConfig(path string) (config Config, err error) {
 	viper.AutomaticEnv()
 
-	// 🔑 Required for ENV mapping
+	//Required for ENV mapping
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	// ======================
@@ -124,17 +124,17 @@ func LoadConfig(path string) (config Config, err error) {
 		return config, err
 	}
 
-	// ✂️ Sanitize secrets
+	// Sanitize secrets
 	config.TokenSymmetricKey = strings.TrimSpace(config.TokenSymmetricKey)
 
-	// 🔎 Debug (optional)
+	//Debug (optional)
 	log.Printf(
 		"TOKEN_SYMMETRIC_KEY=%q len=%d",
 		config.TokenSymmetricKey,
 		len(config.TokenSymmetricKey),
 	)
 
-	// ✅ Validate critical secret
+	// Validate critical secret
 	if len(config.TokenSymmetricKey) != 32 {
 		return config, fmt.Errorf(
 			"TOKEN_SYMMETRIC_KEY must be exactly 32 chars, got %d",

@@ -1,0 +1,99 @@
+name: Blue-Green Deploy (DigitalOcean)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Optional image tag (defaults to commit SHA)"
+        required: false
+        type: string
+
+env:
+  K8S_NAMESPACE: gomacbot
+  IMAGE_NAME: gomacbot-api
+  REGISTRY: registry.digitalocean.com
+
+jobs:
+  deploy:
+    name: Build, push, and blue-green deploy
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Log in to DigitalOcean Container Registry
+        run: doctl registry login --expiry-seconds 1200
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Prepare Docker build context
+        run: touch .env
+
+      - name: Build and push image
+        env:
+          DO_REGISTRY: ${{ secrets.DO_REGISTRY_NAME }}
+          IMAGE_TAG: ${{ inputs.image_tag || github.sha }}
+        run: |
+          IMAGE="${REGISTRY}/${DO_REGISTRY}/${IMAGE_NAME}"
+          docker build \
+            --tag "${IMAGE}:${IMAGE_TAG}" \
+            --tag "${IMAGE}:latest" \
+            --cache-from type=registry,ref="${IMAGE}:buildcache" \
+            --cache-to type=registry,ref="${IMAGE}:buildcache",mode=max \
+            .
+          docker push "${IMAGE}:${IMAGE_TAG}"
+          docker push "${IMAGE}:latest"
+
+      - name: Configure kubectl for DOKS
+        env:
+          DO_K8S_CLUSTER: ${{ secrets.DO_K8S_CLUSTER_NAME }}
+        run: doctl kubernetes cluster kubeconfig save "${DO_K8S_CLUSTER}"
+
+      - name: Apply Kubernetes base manifests
+        env:
+          DO_REGISTRY: ${{ secrets.DO_REGISTRY_NAME }}
+        run: |
+          for manifest in deploy/digitalocean/k8s/*.yaml; do
+            base="$(basename "${manifest}")"
+            if [ "${base}" = "service-active.yaml" ] && kubectl get svc gomacbot-api -n "${K8S_NAMESPACE}" >/dev/null 2>&1; then
+              echo "Skipping service-active.yaml to preserve live traffic selector"
+              continue
+            fi
+            if [ "${base}" = "secret.example.yaml" ]; then
+              continue
+            fi
+            sed "s|REPLACE_REGISTRY|${DO_REGISTRY}|g" "${manifest}" | kubectl apply -f -
+          done
+
+      - name: Ensure registry pull secret exists
+        env:
+          DO_REGISTRY: ${{ secrets.DO_REGISTRY_NAME }}
+        run: |
+          doctl registry kubernetes-manifest "${DO_REGISTRY}" --namespace="${K8S_NAMESPACE}" | kubectl apply -f -
+
+      - name: Run blue-green deployment
+        env:
+          DO_REGISTRY: ${{ secrets.DO_REGISTRY_NAME }}
+          IMAGE_TAG: ${{ inputs.image_tag || github.sha }}
+        run: |
+          export IMAGE="${REGISTRY}/${DO_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+          export K8S_NAMESPACE="${K8S_NAMESPACE}"
+          chmod +x deploy/digitalocean/scripts/blue-green-deploy.sh
+          ./deploy/digitalocean/scripts/blue-green-deploy.sh
+
+      - name: Verify active service
+        run: |
+          ACTIVE="$(kubectl get svc gomacbot-api -n "${K8S_NAMESPACE}" -o jsonpath='{.spec.selector.deploy-slot}')"
+          echo "Active deploy slot: ${ACTIVE}"
+          kubectl get pods -n "${K8S_NAMESPACE}" -l app=gomacbot-api -o wide

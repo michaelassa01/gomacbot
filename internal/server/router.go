@@ -10,11 +10,15 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 
 	// import modules router
+	transactions "github.com/michaelassa01/gomacbot/internal/transactions"
 	users "github.com/michaelassa01/gomacbot/internal/users"
 )
 
 func (s *Server) setupRouter(config u.Config) {
 	router := gin.Default()
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "ok"})
+	})
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.Use(middleware.RateLimitMiddleware())
 
@@ -30,6 +34,9 @@ func (s *Server) setupRouter(config u.Config) {
 
 	usersHandler := users.NewHandler(s.Services.User)
 	users.RegisterUsersRoutes(apiKeyOnly, usersHandler)
+
+	transactionsHandler := transactions.NewHandler(s.Services.Transactions)
+	transactions.RegisterTransactionsRoutes(apiKeyOnly, transactionsHandler)
 
 	s.router = router
 }

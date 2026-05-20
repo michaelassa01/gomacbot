@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Shell scripts must use LF for bash/make on Linux and Git Bash
+*.sh text eol=lf
